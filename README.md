@@ -1,2 +1,2 @@
-# Basic-Raycaster
-Using 3D vectors and matrices to implement a basic ray caster in C++ with SDL
+# comp270-worksheet-3
+Base repository for COMP270 worksheet 3
