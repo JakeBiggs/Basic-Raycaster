@@ -110,11 +110,7 @@ Vector3D Camera::getRayDirectionThroughPixel(int i, int j)
 	Vector3D rayDir;
 	Vector3D worldPos(i, j, m_viewPlane.distance); //Vector3D Representing the point in space the ray is colliding with.
 	
-	/*
-	rayDir.x = worldPos.x * m_pixelWidth - m_viewPlane.halfWidth;
-	rayDir.y = worldPos.y * m_pixelHeight - m_viewPlane.halfHeight;
-	rayDir.z = worldPos.z;
-	*/
+
 	rayDir = Vector3D(
 		worldPos.x * m_pixelWidth - m_viewPlane.halfWidth, 
 		worldPos.y * m_pixelHeight - m_viewPlane.halfHeight, 
@@ -136,10 +132,75 @@ void Camera::updateWorldTransform()
 	// included in the Matrix3D m_cameraToWorldTransform; you can access an element of the matrix
 	// at row i and column j using the () operator for both get and set operations, e.g.
 	// matrix(i, j) = value or value = matrix(i, j) will both work.
-	m_cameraToWorldTransform(0, 3) = m_position.x;
+
+	/*m_cameraToWorldTransform(0, 3) = m_position.x;
 	m_cameraToWorldTransform(1, 3) = m_position.y;
 	m_cameraToWorldTransform(2, 3) = m_position.z;
-	m_cameraToWorldTransform(2, 2) = -1.0f;	// scale of -1 on the z-axis
+	m_cameraToWorldTransform(2, 2) = -1.0f;	// scale of -1 on the z-axis*/
+
+	//Initialising Matrices for X, Y and Z rotations
+	Matrix3D xRotation = Matrix3D();
+	Matrix3D yRotation = Matrix3D();
+	Matrix3D zRotation = Matrix3D();
+
+	//X Rotation Matrix
+	/*
+			[1 ,  0 ,  0  ]
+	 Rx(0)= [0 ,cos0, sin0]
+			[0 ,-sin0,cos0]
+	*/
+	//Setting X values in xRotation matrix to those in Rx 
+	xRotation(0, 0) = 1;
+	xRotation(1, 1) = cosf(m_rotation.x);
+	xRotation(1, 2) = -sinf(m_rotation.x);
+	xRotation(2, 1) = sinf(m_rotation.x);
+	xRotation(2, 2) = cosf(m_rotation.x);
+
+
+	//Y Rotation Matrix
+	/*
+			[cos0 ,0,-sin0]
+	 Ry(0)= [0 ,   1,  0  ]
+			[sin0, 0 ,cos0]
+	*/
+	yRotation(0, 0) = cosf(m_rotation.y);
+	yRotation(0, 2) = -sinf(m_rotation.y);
+	yRotation(1, 1) = 1;
+	yRotation(0, 2) = sinf(m_rotation.y);
+	yRotation(2, 2) = cosf(m_rotation.y);
+
+
+	//Z Rotation Matrix
+		/*
+				[cos0,sin0, 0 ]
+		 Rz(0)= [-sin,cos0, 0 ]
+				[0 ,   0  , 1 ]
+		*/
+	zRotation(0, 0) = cosf(m_rotation.z);
+	zRotation(0, 1) = sinf(m_rotation.z);
+	zRotation(1, 0) = -sinf(m_rotation.z);
+	zRotation(1, 1) = cosf(m_rotation.z);
+	zRotation(2, 2) = 1;
+
+
+	//Combines all rotations for a final rotation matrix for all axes
+	Matrix3D xyzRotation = xRotation * yRotation * zRotation;
+
+	//Translation matrix
+	Matrix3D xyzTranslation = Matrix3D(); //Initialises translation matrix and fills with identity matrix (1 in diagonals top left to bottom right)
+
+	//In 4x4 Matrices, right most columns store	translations along the X,Y and Z axes respectively:
+	xyzTranslation(0, 3) = m_position.x; 
+	xyzTranslation(1, 3) = m_position.y;
+	xyzTranslation(2, 3) = m_position.z;
+
+	//Element (2,2) Represents scaling factor along Z-axis. (Inverts Q/E controls)
+	xyzTranslation(2, 2) = -1;
+	
+	
+	//m_cameraToWorldTransform = xyzRotation * xyzTranslation;
+	m_cameraToWorldTransform = xyzTranslation * xyzRotation;
+
 }
 
 // Gets the colour of a given pixel based on the closest object as stored in the pixel buffer
