@@ -47,6 +47,7 @@ public:
 
 	Matrix3D inverseTransform() const;
 
+
 private:
 	// The elements of the matrix stored in a 2D array
 	float	m_elements[4][4] = {	{ 1.0f, 0.0f, 0.0f, 0.0f },

@@ -198,8 +198,9 @@ void Camera::updateWorldTransform()
 	xyzTranslation(2, 2) = -1;
 	
 	
-	//m_cameraToWorldTransform = xyzRotation * xyzTranslation;
-	m_cameraToWorldTransform = xyzTranslation * xyzRotation;
+	//combines the transformation and rotation matrices to give a final camera to world transformation that we can apply to our 3D objects.
+	m_cameraToWorldTransform = xyzRotation * xyzTranslation;
+	//m_cameraToWorldTransform = xyzTranslation * xyzRotation;
 
 }
 
@@ -231,4 +232,24 @@ Colour Camera::getColourAtPixel(unsigned i, unsigned j)
 		colour = object->m_colour;
 
 	return colour;
+	
 }
+/*
+Colour Camera::calculateDiffuseColour(const Point3D& intersectionPoint, const Vector3D& surfaceNormal, const Light& light) const
+{
+	// Calculate the direction from the intersection point to the light source
+	Vector3D lightDirection = (light.position - intersectionPoint).normalise();
+
+	// Calculate the dot product between the surface normal and the light direction
+	float dotProduct = surfaceNormal.dot(lightDirection);
+
+	// Ensure the dot product is non-negative (clamp to zero for shadowed areas)
+	float diffuseFactor = max(0.0f, dotProduct);
+
+	// Calculate the diffuse reflection color using the light intensity and diffuse factor
+	Colour diffuseColor = light.intensity * diffuseFactor;
+
+	return diffuseColor;
+	
+}
+*/

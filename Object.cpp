@@ -24,6 +24,8 @@ Plane::Plane(Point3D centrePoint, Vector3D n, Vector3D up, float w, float h) :
 	}
 }
 
+
+
 //--------------------------------------------------------------------------------------------------------------------//
 
 // Returns true if the ray intersects with this plane.

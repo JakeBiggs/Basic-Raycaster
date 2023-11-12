@@ -2,7 +2,7 @@
 #include "Matrix3D.h"
 #include "PixelBuffer.h"
 #include "Object.h"
-
+#include "Light.h"
 class Camera
 {
 public:
@@ -25,8 +25,10 @@ public:
 	// Change the distance from the camera to the view plane
 	void	zoom(float d) { m_viewPlane.distance += d; m_viewPlane.distance = max(1.0f, m_viewPlane.distance); }
 
+
 	Colour	getColourAtPixel(unsigned i, unsigned j);
 
+	//Colour  calculateDiffuseColour(const Point3D& intersectionPoint, const Vector3D& surfaceNormal, const Light& light) const;
 private:
 	Vector3D	getRayDirectionThroughPixel(int i, int j);
 	void		updateWorldTransform();

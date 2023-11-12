@@ -25,6 +25,8 @@ Matrix3D Matrix3D::inverseTransform() const
 	return inverse;
 }
 
+
+
 //--------------------------------------------------------------------------------------------------------------------//
 
 // Multiplies the components of a point/vector

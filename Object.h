@@ -12,7 +12,7 @@ struct Colour
 class Object
 {
 public:
-	Object(Point3D centrePoint = Point3D()) : m_centre(centrePoint) {}
+	Object(Point3D centrePoint = Point3D(), const Vector3D &c = 0.18f) : m_centre(centrePoint), albedo(c) {}
 	virtual ~Object() {}
 
 	// Returns true if the ray intersects with this object.
@@ -33,6 +33,9 @@ public:
 	
 	// The object's RGBA colour
 	Colour	m_colour = Colour(126, 126, 126);
+
+	// The objects Albedo value (how much light is reflected/absorbed)
+	Vector3D albedo;
 
 	// Flag indicating whether the object can move
 	bool	m_isDynamic = false;
@@ -82,3 +85,13 @@ private:
 	float	m_radius;	// The radius of the sphere
 	float	m_radius2;	// The squared radius of the sphere
 };
+
+/*
+class Polygon : public Object
+{
+public:
+	Polygon(Point3D centrePoint = Point3D(), Vector3D v0, Vector3D v1, Vector3D v2) : Object(centrePoint) {}
+	virtual ~Polygon() {}
+
+};
+*/

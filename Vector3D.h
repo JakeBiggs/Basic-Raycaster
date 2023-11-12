@@ -1,5 +1,5 @@
 #pragma once
-
+#include "Math.h"
 // A class for performing basic operations with homogeneous vectors in 3D space.
 // Feel free to edit/extend!
 class Vector3D
