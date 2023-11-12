@@ -8,8 +8,11 @@ struct ObjectInfo
 {
 	const Object* object;
 	float distanceToIntersection;	// Distance along the ray from the origin of the intersection point
-	ObjectInfo(const Object* obj = nullptr, float d = FLT_MAX)
-		: object(obj), distanceToIntersection(d) {}
+	//Point3D intersectionPoint; //Point of intersecction
+	Vector3D hitNormal;
+
+	ObjectInfo(const Object* obj = nullptr, float d = FLT_MAX, Vector3D n=0)
+		: object(obj), distanceToIntersection(d), hitNormal(n) {}
 };
 
 // Class to store information about the closest object to each pixel in a grid.

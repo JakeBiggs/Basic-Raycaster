@@ -144,7 +144,7 @@ void Application::setupScene()
 		Vector3D(0.5f, 0.5f, 1.0f),
 		Vector3D(-0.5f, 1.0f, -0.25f),
 		10.0f, 7.5f));
-	m_objects[0]->m_colour = Colour(255, 255, 0);
+	m_objects[0]->m_colour = Colour(50, 255, 50);
 	m_objects.push_back(new Sphere(Point3D(0.0f, 0.0f, 3.0f)));
 	m_objects[1]->m_colour = Colour(169, 90, 161);
 	m_objects[1]->m_isDynamic = true;

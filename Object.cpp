@@ -28,21 +28,18 @@ Plane::Plane(Point3D centrePoint, Vector3D n, Vector3D up, float w, float h) :
 
 //--------------------------------------------------------------------------------------------------------------------//
 
+float Plane::getDistToIntersection(const Point3D& raySrc, const Vector3D& rayDir) const
+{
+	return ((m_centre - raySrc).dot(m_normal)) / rayDir.dot(m_normal);
+}
+
 // Returns true if the ray intersects with this plane.
 // Params:
 //	raySrc					source/starting point of the ray (input)
 //	rayDir					direction of the ray (input)
 //	distToFirstIntersection	distance along the ray from the starting point of the first intersection with the plane (output)
-bool Plane::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection) const
+bool Plane::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const
 {
-	// TODO: implement the ray-plane intersection test, returning true if the ray passes through the plane at a
-	// point within the width/height bounds (if applicable) as defined by the values of m_halfWidth and m_halfHeight
-	// in the directions m_widthDirection and m_heightDirection respectively. Make sure you set distToFirstIntersection
-	// to be the distance along the ray from its starting point/source to the point of intersection.
-	
-	
-	//return false;
-
 	/////
 	// uses the equation: t = (n * (p - p2))/(n * v) to find the distance from the source to the point of intersection on the plane
 	// t = distance to the intersection
@@ -68,6 +65,10 @@ bool Plane::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float
 	if (abs(centreToIntersection.dot(m_widthDirection)) < m_halfWidth && 
 		abs(centreToIntersection.dot(m_heightDirection)) < m_halfHeight &&
 		distToFirstIntersection > 0) { //Checks that plane is in front of camera not behind
+		//hitNormal = Vector3D(m_normal);
+
+		
+
 		return true;
 	}
 	else {
@@ -87,12 +88,21 @@ void Plane::applyTransformation(const Matrix3D & matrix)
 	m_normal = matrix * m_normal;
 }
 
+float Sphere::getDistToIntersection(const Point3D& raySrc, const Vector3D& rayDir) const 
+{
+	 
+	Vector3D raySrcToCentre = m_centre - raySrc;
+	float distToCentre = raySrcToCentre.dot(rayDir);
+	float dist2 = raySrcToCentre.dot(raySrcToCentre) - (distToCentre * distToCentre);
+	return distToCentre - sqrt(abs(m_radius2 - dist2));
+}
+
 // Returns true if the ray intersects with this sphere.
 // Params:
 //	raySrc					starting point of the ray (input)
 //	rayDir					direction of the ray (input)
 //	distToFirstIntersection	distance along the ray from the starting point of the first intersection with the sphere (output)
-bool Sphere::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection) const
+bool Sphere::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const
 {
 	// Find the point on the ray closest to the sphere's centre
 	Vector3D srcToCentre = m_centre - raySrc;
@@ -117,3 +127,15 @@ void Sphere::applyTransformation(const Matrix3D & matrix)
 {
 	m_centre = matrix * m_centre;
 }
+
+bool Light::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const
+{
+	return false;
+}
+
+void Light::applyTransformation(const Matrix3D& matrix)
+{
+	m_centre = matrix * m_centre;
+
+}
+

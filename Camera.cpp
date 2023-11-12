@@ -80,10 +80,11 @@ bool Camera::updatePixelBuffer(const std::vector<Object*>& objects)
 
 					// Perform the intersection test between the ray through this pixel and the object,
 					// and check whether the intersection point is closer than that of previously tested objects
-					if (obj->getIntersection(origin, rayDir, distToIntersection)	
+					if (obj->getIntersection(origin, rayDir, distToIntersection, m_pixelBuf)	
 						&& distToIntersection < m_pixelBuf.getObjectInfoForPixel(i, j).distanceToIntersection)
 					{
 						m_pixelBuf.setObjectInfoForPixel(i, j, ObjectInfo(obj, distToIntersection));
+
 					}
 //--------------------------------------------------------------------------------------------------------------------//
 				}
@@ -211,7 +212,7 @@ Colour Camera::getColourAtPixel(unsigned i, unsigned j)
 {
 	Colour colour;
 	// TODO: update this to make the colouring more interesting!
-
+	
 	// You can use the object information stored in m_pixelBuf
 	// for the object and its intersection; if you want to add more information
 	// from the intersection test, you'll need to:
@@ -225,12 +226,24 @@ Colour Camera::getColourAtPixel(unsigned i, unsigned j)
 
 	// The ObjectInfo struct (defined in PixelBuffer.h) contains
 	// information about the closest object to the pixel 
+	
 	const ObjectInfo& objInfo = m_pixelBuf.getObjectInfoForPixel(i, j);
 
 	const Object* object = objInfo.object;
 	if (object != nullptr)
-		colour = object->m_colour;
+	{
+		//Point3D hitPoint = objInfo.intersectionPoint;
+		Vector3D rayDir = getRayDirectionThroughPixel(i, j);
+		Vector3D hitNormal;
+		Vector3D texCoords;	
+		
+		//bool intersection = object->getIntersection(objInfo.object->intersectionPoint, rayDir);
+		
+		//hitColor = object.albedo / M_PI * light->intensity * light->color * std::max(0, hitNormal.dot(L));
 
+		//colour = object->m_colour;
+		
+	}
 	return colour;
 	
 }
