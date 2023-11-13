@@ -193,6 +193,20 @@ void Camera::updateWorldTransform()
 
 }
 
+//Converts point in world space into camera space coordinates
+Point3D Camera::worldToCameraSpace(Point3D p) {
+
+	//Scaling the world point to pixel sizes
+	float scaledX = p.x * m_pixelWidth;
+	float scaledY = p.y * m_pixelHeight;
+	
+	//X&Y Values are scaled then translated by half the relative viewplane axis. 
+	//Z axis does not need to be scaled as depth is already represented correctly
+	Point3D CameraPoint = (scaledX - m_viewPlane.halfWidth, scaledY - m_viewPlane.halfHeight, p.z + m_viewPlane.distance);
+	return CameraPoint;
+}
+
+
 // Gets the colour of a given pixel based on the closest object as stored in the pixel buffer
 // Params:
 //	i, j	Pixel x, y coordinates
@@ -216,7 +230,6 @@ Colour Camera::getColourAtPixel(unsigned i, unsigned j, std::vector<Object*> m_o
 		//Point3D hitPoint = objInfo.intersectionPoint;
 		Vector3D rayDir = getRayDirectionThroughPixel(i, j);
 		Vector3D hitNormal;
-		Vector3D texCoords;
 		Point3D origin;
 		
 		//bool intersection = object->getIntersection(objInfo.object->intersectionPoint, rayDir);
@@ -247,6 +260,13 @@ Vector3D  ColourToVector(Colour c) {
 }
 Colour VectorToColour(Vector3D v) {
 	return Colour(v.x, v.y, v.z);
+}
+
+float clamp(float input, float lb, float ub){ 
+	//return (input < lb) ? lb : ((input > ub) ? ub : input); 
+	if (input < lb) { return lb; }
+	else if (input > ub) { return ub; }
+	else return input;
 }
 
 //Calculates the refelection vector of a given incident ray, using surface normals
@@ -284,6 +304,7 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 	}
 
 	// get the current object and distance to its intersection
+	//TODO: fix null warning
 	object->getIntersection(raySrc, rayDir, distToIntersection);
 
 
@@ -308,7 +329,7 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 			normal = sphere->calculateNormal(intersectionPoint);
 			normal.normalise();
 		}
-		else if (plane != nullptr) { //If plane doesn't return a null pointer when cast onto object (i.e it IS a plane)
+		if (plane != nullptr) { //If plane doesn't return a null pointer when cast onto object (i.e it IS a plane)
 			normal = plane->calculateNormal();
 			normal.normalise();
 		}
@@ -333,17 +354,64 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 		reflectionVector = getReflectionVector(lightDirection, normal);
 		reflectionVector.normalise();
 
+		//Calculating raySrc (origin) to camera vector
+		//C = O - I
+		//Using vector rules Camera = Origin - Intersection
+		Vector3D srcToCam = raySrc - intersectionPoint;
+
 		//Gets current light colour and converts to vector format (rgb = xyz)
 		lightColourVector = ColourToVector(lights[l]->m_colour);
 
 
 		//Diffuse Light is calculated using:
 		//Diffuse = id * kd * (L DOT N)
+		//Where:
+		//id: diffuse intensity 
+		//kd: diffuse reflection constant
+		//L: Eye to Light Vector
+		//N: Surface Normal Vector
 		diffuse = diffuse + lightColourVector * lights[l]->ambientIntensity * abs(normal.dot(intersectionToLight));
+
+
+
+		//Specular Light is calculated using:
+		// Specular = is * ks * (R DOT V)^n  * LightColour
+		//Where:
+		//is: specular intensity (in our simplified model we will use our ambient intensity value for all lights)
+		//ks: specular reflection constant (we can ignore this term if we want uniform materials/reflections)
+		//R: Reflected Vector 
+		//V: origin to camera vector
+		//N: the shininess exponent, controlling the size of the specular highlights
+		//LightColour: colour of the light
+		float globalSpecularReflection = 0.18f; 
+		int shinyExp = 3;
+		//float specScale = 0.5f;
+		specular = (specular + lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
+
+
+		//Ambient Light is calculated as:
+		//Ambient = lightColour * ka * ia
+		//Where:
+		//ka: Ambient Reflection constant
+		//ia: Amient intensity.
+		float ka = 0.5f;
+		ambient = ambient + lightColourVector * lights[l]->ambientIntensity * ka;
+
+
 	}
 	
+	Vector3D phong = diffuse + specular + ambient;
+	
+	// combines the shading effects with the original color, ensuring that the resulting color values are in the normalized range 0-1.
+	//The division by 255 is used to bring the intensity values back to a valid color range if they have been scaled during the shading calculations.
+	objectColourVector = Vector3D(phong.x * objectColourVector.x / 255.0f, phong.y * objectColourVector.y / 255.0f, phong.z * objectColourVector.z / 255.0f);
 
-	objectColourVector = Vector3D(diffuse.x * objectColourVector.x / 255.0f, diffuse.y * objectColourVector.y / 255.0f, diffuse.z * objectColourVector.z / 255.0f);
+	//Clamping values within RGB Range (hopefully stops plane phasing out of existence?)
+	//objectColourVector.x = std::clamp()
+	objectColourVector.x = clamp(objectColourVector.x, 0, 255);
+	objectColourVector.y = clamp(objectColourVector.y, 0, 255);
+	objectColourVector.z = clamp(objectColourVector.z, 0, 255);
+	
 	return VectorToColour(objectColourVector);
 
 

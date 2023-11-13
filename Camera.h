@@ -37,6 +37,8 @@ public:
 private:
 	Vector3D	getRayDirectionThroughPixel(int i, int j);
 	void		updateWorldTransform();
+
+	Point3D worldToCameraSpace(Point3D p);
 	
 	Point3D		m_position = Point3D();			// The position (translation) of the camera in world space
 	Vector3D	m_rotation = Vector3D();		// The Euler rotation of the camera in world space

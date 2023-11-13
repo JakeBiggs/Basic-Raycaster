@@ -102,7 +102,7 @@ private:
 class Light : public Object
 {
 public:
-	Light(Point3D centrePoint = Point3D(), float ambientIntensity=1.0f) : Object(centrePoint), ambientIntensity(ambientIntensity) {}
+	Light(Point3D centrePoint = Point3D(), float ambientIntensity=0.18f) : Object(centrePoint), ambientIntensity(ambientIntensity) {}
 	virtual ~Light() {}
 	float ambientIntensity;
 
