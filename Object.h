@@ -12,7 +12,7 @@ struct Colour
 class Object
 {
 public:
-	Object(Point3D centrePoint = Point3D(), const Vector3D &c = 0.18f) : m_centre(centrePoint), albedo(c) {}
+	Object(Point3D centrePoint = Point3D()) : m_centre(centrePoint){}
 	virtual ~Object() {}
 
 	// Returns true if the ray intersects with this object.
@@ -20,7 +20,7 @@ public:
 	//	raySrc					starting point of the ray (input)
 	//	rayDir					direction of the ray (input)
 	//	distToFirstIntersection	distance along the ray from the starting point of the first intersection with the object (output)
-	virtual bool getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const = 0;
+	virtual bool getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection) const = 0;
 	Point3D intersectionPoint;
 
 	// Transforms the object using the given matrix.
@@ -32,6 +32,8 @@ public:
 	// Get the maximum distance of any of the object's vertices from its centre
 	virtual float getMaxRadius() const = 0;
 	
+
+
 	// The object's RGBA colour
 	Colour	m_colour = Colour(126, 126, 126);
 
@@ -59,9 +61,9 @@ public:
 		float w = 0.0f, float h = 0.0f);
 	virtual ~Plane() {}
 
-	virtual Vector3D getNormal() const { return m_normal; } //This is because the normal for a plane is given as just N.
+	virtual Vector3D calculateNormal() const { return m_normal; } //This is because the normal for a plane is given as just N.
 	virtual float getDistToIntersection(const Point3D& raySrc, const Vector3D& rayDir) const;
-	virtual bool getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const;
+	virtual bool getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection) const;
 	virtual void applyTransformation(const Matrix3D& matrix);
 	virtual float getMaxRadius() const { return m_halfDiagonal; }
 
@@ -83,8 +85,10 @@ public:
 	Sphere(Point3D centrePoint = Point3D(), float r = 1.0f) : Object(centrePoint), m_radius(r), m_radius2(r * r) {}
 	virtual ~Sphere() {}
 
+	//Get the normal of a given object
+	virtual Vector3D calculateNormal(Point3D& pointOnSurface) const;
 	virtual float getDistToIntersection(const Point3D& raySrc, const Vector3D& rayDir) const;
-	virtual bool getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const;
+	virtual bool getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection) const;
 	virtual void applyTransformation(const Matrix3D& matrix);
 	virtual float getMaxRadius() const { return m_radius; }
 
@@ -102,9 +106,8 @@ public:
 	virtual ~Light() {}
 	float ambientIntensity;
 
-	virtual bool getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const;
+	virtual bool getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection) const;
 	virtual void applyTransformation(const Matrix3D& matrix);
 	virtual float getMaxRadius() const { return 0; }
-
 
 };

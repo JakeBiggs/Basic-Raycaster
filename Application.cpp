@@ -140,6 +140,8 @@ void Application::setupScene()
 	m_objects.push_back(new Plane(Point3D(), Vector3D(0.0f, 0.0f, 1.0f), Vector3D(0.0f, 1.0f, 0.0f), 10.0f, 7.5f));
 	m_objects[0]->m_colour = Colour(245, 121, 58);
 	*/
+	
+	
 	m_objects.push_back(new Plane(Point3D(),
 		Vector3D(0.5f, 0.5f, 1.0f),
 		Vector3D(-0.5f, 1.0f, -0.25f),
@@ -152,6 +154,11 @@ void Application::setupScene()
 	m_objects.push_back(new Sphere(Point3D(1.0f, 1.0f, 1.0f), 0.75f));
 	m_objects[2]->m_colour = Colour(133, 192, 249);
 	m_objects[2]->m_isDynamic = true;
+
+	m_objects.push_back(new Light(Point3D(0.0f, 0.0f, 0.0f), 0.5f));
+	m_objects[3]->m_colour = Colour(255, 255, 255);
+	m_objects[3]->m_isDynamic = true;
+
 }
 
 // Apply an update to the (dynamic) objects on each frame
@@ -191,7 +198,7 @@ void Application::render()
 			rect.y = 0.0f;
 			for (int j = jStart; j >= 0; --j)
 			{
-				const Colour col = m_camera.getColourAtPixel(i, j);
+				const Colour col = m_camera.getColourAtPixel(i, j, m_objects);
 				SDL_SetRenderDrawColor(m_renderer, col.r, col.g, col.b, col.a);
 				SDL_RenderFillRectF(m_renderer, &rect);
 				rect.y += y_step;

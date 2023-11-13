@@ -38,7 +38,7 @@ float Plane::getDistToIntersection(const Point3D& raySrc, const Vector3D& rayDir
 //	raySrc					source/starting point of the ray (input)
 //	rayDir					direction of the ray (input)
 //	distToFirstIntersection	distance along the ray from the starting point of the first intersection with the plane (output)
-bool Plane::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const
+bool Plane::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection) const
 {
 	/////
 	// uses the equation: t = (n * (p - p2))/(n * v) to find the distance from the source to the point of intersection on the plane
@@ -102,7 +102,7 @@ float Sphere::getDistToIntersection(const Point3D& raySrc, const Vector3D& rayDi
 //	raySrc					starting point of the ray (input)
 //	rayDir					direction of the ray (input)
 //	distToFirstIntersection	distance along the ray from the starting point of the first intersection with the sphere (output)
-bool Sphere::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const
+bool Sphere::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection) const
 {
 	// Find the point on the ray closest to the sphere's centre
 	Vector3D srcToCentre = m_centre - raySrc;
@@ -122,13 +122,19 @@ bool Sphere::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, floa
 	return false;
 }
 
+Vector3D Sphere::calculateNormal(Point3D& pointOnSurface) const {
+	//The normal of a sphere is always the vector from the centre to the point on the surface of the sphere
+	Vector3D normal = pointOnSurface - m_centre; 
+	return normal;
+}
+
 // Transforms the object using the given matrix.
 void Sphere::applyTransformation(const Matrix3D & matrix)
 {
 	m_centre = matrix * m_centre;
 }
 
-bool Light::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection, PixelBuffer pb) const
+bool Light::getIntersection(const Point3D& raySrc, const Vector3D& rayDir, float& distToFirstIntersection) const
 {
 	return false;
 }

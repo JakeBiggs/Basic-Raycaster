@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Camera.h"
 #include "Object.h"
-
+#include <iostream>
 // Initialises the camera at the given position
 void Camera::init(const Point3D& pos)
 {
@@ -80,7 +80,7 @@ bool Camera::updatePixelBuffer(const std::vector<Object*>& objects)
 
 					// Perform the intersection test between the ray through this pixel and the object,
 					// and check whether the intersection point is closer than that of previously tested objects
-					if (obj->getIntersection(origin, rayDir, distToIntersection, m_pixelBuf)	
+					if (obj->getIntersection(origin, rayDir, distToIntersection)	
 						&& distToIntersection < m_pixelBuf.getObjectInfoForPixel(i, j).distanceToIntersection)
 					{
 						m_pixelBuf.setObjectInfoForPixel(i, j, ObjectInfo(obj, distToIntersection));
@@ -126,18 +126,6 @@ Vector3D Camera::getRayDirectionThroughPixel(int i, int j)
 // and stores it in m_cameraToWorldTransform
 void Camera::updateWorldTransform()
 {
-	// TODO: the following code creates a transform for a camera with translation only
-	// plus a flip on the z-axis to change from right- to left-handed coordinates;
-	// update it to handle a generic transformation including rotations.
-	// The Euler angle values for rotations about each axis are stored in m_rotation and should be
-	// included in the Matrix3D m_cameraToWorldTransform; you can access an element of the matrix
-	// at row i and column j using the () operator for both get and set operations, e.g.
-	// matrix(i, j) = value or value = matrix(i, j) will both work.
-
-	/*m_cameraToWorldTransform(0, 3) = m_position.x;
-	m_cameraToWorldTransform(1, 3) = m_position.y;
-	m_cameraToWorldTransform(2, 3) = m_position.z;
-	m_cameraToWorldTransform(2, 2) = -1.0f;	// scale of -1 on the z-axis*/
 
 	//Initialising Matrices for X, Y and Z rotations
 	Matrix3D xRotation = Matrix3D();
@@ -165,9 +153,9 @@ void Camera::updateWorldTransform()
 			[sin0, 0 ,cos0]
 	*/
 	yRotation(0, 0) = cosf(m_rotation.y);
-	yRotation(0, 2) = -sinf(m_rotation.y);
-	yRotation(1, 1) = 1;
 	yRotation(0, 2) = sinf(m_rotation.y);
+	yRotation(1, 1) = 1;
+	yRotation(2, 0) = -sinf(m_rotation.y);
 	yRotation(2, 2) = cosf(m_rotation.y);
 
 
@@ -208,10 +196,9 @@ void Camera::updateWorldTransform()
 // Gets the colour of a given pixel based on the closest object as stored in the pixel buffer
 // Params:
 //	i, j	Pixel x, y coordinates
-Colour Camera::getColourAtPixel(unsigned i, unsigned j)
+Colour Camera::getColourAtPixel(unsigned i, unsigned j, std::vector<Object*> m_objects)
 {
 	Colour colour;
-	// TODO: update this to make the colouring more interesting!
 	
 	// You can use the object information stored in m_pixelBuf
 	// for the object and its intersection; if you want to add more information
@@ -220,13 +207,7 @@ Colour Camera::getColourAtPixel(unsigned i, unsigned j)
 	// 2. update the ObjectInfo struct in PixelBuffer.h to store the appropriate value types
 	// 3. update the marked section in updatePixelBuffer() to store the values in m_pixelBuf
 
-	// You can also retrieve the direction of the ray that intersects the object
-	// by calling getRayDirectionThroughPixel(i, j); remember that the ray originates
-	// from the camera, whose position is just the origin in camera space.
 
-	// The ObjectInfo struct (defined in PixelBuffer.h) contains
-	// information about the closest object to the pixel 
-	
 	const ObjectInfo& objInfo = m_pixelBuf.getObjectInfoForPixel(i, j);
 
 	const Object* object = objInfo.object;
@@ -235,34 +216,137 @@ Colour Camera::getColourAtPixel(unsigned i, unsigned j)
 		//Point3D hitPoint = objInfo.intersectionPoint;
 		Vector3D rayDir = getRayDirectionThroughPixel(i, j);
 		Vector3D hitNormal;
-		Vector3D texCoords;	
+		Vector3D texCoords;
+		Point3D origin;
 		
 		//bool intersection = object->getIntersection(objInfo.object->intersectionPoint, rayDir);
 		
 		//hitColor = object.albedo / M_PI * light->intensity * light->color * std::max(0, hitNormal.dot(L));
 
-		//colour = object->m_colour;
+		colour = object->m_colour;
 		
+		/*
+		const Sphere* sphere = dynamic_cast<const Sphere*>(object);
+		const Plane* plane = dynamic_cast<const Plane*>(object);
+		*/
+		std::vector<Light*> lights;
+
+		for (i = 0; i < m_objects.size(); i++) {
+			Light* light = dynamic_cast<Light*>(m_objects[i]);
+			if (light != nullptr) { lights.push_back(light); }
+		}
+		
+		if (lights.size() >= 1) { colour = Phong(object, colour, origin, rayDir, lights); }
 	}
 	return colour;
 	
 }
-/*
-Colour Camera::calculateDiffuseColour(const Point3D& intersectionPoint, const Vector3D& surfaceNormal, const Light& light) const
-{
-	// Calculate the direction from the intersection point to the light source
-	Vector3D lightDirection = (light.position - intersectionPoint).normalise();
 
-	// Calculate the dot product between the surface normal and the light direction
-	float dotProduct = surfaceNormal.dot(lightDirection);
-
-	// Ensure the dot product is non-negative (clamp to zero for shadowed areas)
-	float diffuseFactor = max(0.0f, dotProduct);
-
-	// Calculate the diffuse reflection color using the light intensity and diffuse factor
-	Colour diffuseColor = light.intensity * diffuseFactor;
-
-	return diffuseColor;
-	
+Vector3D  ColourToVector(Colour c) {
+	return Vector3D(c.r, c.b, c.g);
 }
-*/
+Colour VectorToColour(Vector3D v) {
+	return Colour(v.x, v.y, v.z);
+}
+
+//Calculates the refelection vector of a given incident ray, using surface normals
+Vector3D Camera::getReflectionVector(Vector3D& U, Vector3D& N) {
+	
+	//Using the reflection Formula:
+	// Reflected Ray Vector = Incident Ray Vector - 2*(Incident Dot Normal)*Normal
+	// R = U - 2(U .DOT. N)N
+	// R: the final reflected vector
+	// U: The incident ray (vector being refelcted)
+	// N: Surface normal (found using object helper functions for sphere/plane)
+
+	Vector3D R = U - (2 * N * (U.dot(N)));
+	return R;
+
+}
+
+Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector3D rayDir, std::vector<Light*> lights) {
+	
+	//Casts the shape classes onto the object to see what type of object is actually is, will return nullptr if not that object
+	const Sphere* sphere = dynamic_cast<const Sphere*>(object);
+	const Plane* plane = dynamic_cast<const Plane*>(object);
+
+
+	//Phong Shading Values:
+	Vector3D diffuse=0, specular, ambient;
+	Vector3D objectColourVector = ColourToVector(colour); //We need to convert the colour object to a vector so that we can include it in our maths
+
+	float distToIntersection;
+	if (sphere != nullptr) { //If sphere doesn't return a null pointer when cast onto object (i.e it IS a sphere)
+		distToIntersection = sphere->getDistToIntersection(raySrc, rayDir);
+	}
+	if (plane != nullptr) { //If plane doesn't return a null pointer when cast onto object (i.e it IS a plane)
+		distToIntersection = plane->getDistToIntersection(raySrc, rayDir);
+	}
+
+	// get the current object and distance to its intersection
+	object->getIntersection(raySrc, rayDir, distToIntersection);
+
+
+	//Calculates ambient specular and diffuse for each light "l" in lights object list  
+	for (int l = 0; l < lights.size(); l++) {
+		
+		Point3D intersectionPoint;
+		Vector3D lightDirection;
+		Vector3D intersectionToLight;
+		Vector3D lightIntensity, reflectionVector, lightColourVector;
+		Vector3D normal;
+
+		//Calculates point of intersection using:
+		//Intersection = Origin + |Distance| dot(RayDirection) 
+		//or I = O + |D|R
+		float distMag = abs(distToIntersection);
+		intersectionPoint = raySrc + distMag * rayDir;
+
+
+		//Calculating Normal Vectors:
+		if (sphere != nullptr) { //If sphere doesn't return a null pointer when cast onto object (i.e it IS a sphere)
+			normal = sphere->calculateNormal(intersectionPoint);
+			normal.normalise();
+		}
+		else if (plane != nullptr) { //If plane doesn't return a null pointer when cast onto object (i.e it IS a plane)
+			normal = plane->calculateNormal();
+			normal.normalise();
+		}
+
+		//Calculates Light Direction Vector using:
+		//LightDirection = IntersectionPoint - LightPosition
+		//or L = I - P.
+		// I: Point where ray intersects with object in scene
+		// P: current Light's position value.
+		// L: Resulting vector representing direction of Light ray
+		lightDirection = (intersectionPoint - lights[l]->position());
+		lightDirection.normalise(); //normalised so that we can apply it to our final light vector
+
+		//Finds vector pointing from the point of intersection to the light source using:
+		//LightVector = LightPosition-IntersectionPoint
+		//or L = P - I
+		//Resulting vector representing the intersection to light vector
+		intersectionToLight = lights[l]->position() - intersectionPoint;
+		intersectionToLight.normalise();
+
+		//Calculating Reflection Rays of current light:
+		reflectionVector = getReflectionVector(lightDirection, normal);
+		reflectionVector.normalise();
+
+		//Gets current light colour and converts to vector format (rgb = xyz)
+		lightColourVector = ColourToVector(lights[l]->m_colour);
+
+
+		//Diffuse Light is calculated using:
+		//Diffuse = id * kd * (L DOT N)
+		diffuse = diffuse + lightColourVector * lights[l]->ambientIntensity * abs(normal.dot(intersectionToLight));
+	}
+	
+
+	objectColourVector = Vector3D(diffuse.x * objectColourVector.x / 255.0f, diffuse.y * objectColourVector.y / 255.0f, diffuse.z * objectColourVector.z / 255.0f);
+	return VectorToColour(objectColourVector);
+
+
+	//	return colour;
+}
+
