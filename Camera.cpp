@@ -32,9 +32,17 @@ bool Camera::updatePixelBuffer(const std::vector<Object*>& objects)
 
 		// Transform the objects to the camera's coordinate system
 		const Matrix3D worldToCameraTransform = m_cameraToWorldTransform.inverseTransform();
-		for (auto obj : objects)
-			obj->applyTransformation(worldToCameraTransform);
 
+
+		for (auto obj : objects) {
+			obj->applyTransformation(worldToCameraTransform);
+			
+			if (dynamic_cast<Light*>(obj) != nullptr && m_worldTransformChanged) {
+				obj->applyTransformation(worldToCameraTransform);
+			}
+			
+		}
+		
 		// Fill the pixel buffer with pointers to the closest object for each pixel
 		Point3D origin;
 		Vector3D rayDir;
@@ -84,7 +92,7 @@ bool Camera::updatePixelBuffer(const std::vector<Object*>& objects)
 						&& distToIntersection < m_pixelBuf.getObjectInfoForPixel(i, j).distanceToIntersection)
 					{
 						m_pixelBuf.setObjectInfoForPixel(i, j, ObjectInfo(obj, distToIntersection));
-
+						
 					}
 //--------------------------------------------------------------------------------------------------------------------//
 				}
@@ -92,9 +100,13 @@ bool Camera::updatePixelBuffer(const std::vector<Object*>& objects)
 		}
 
 		// Now put the objects back!
-		for (auto obj : objects)
+		for (auto obj : objects) {
 			obj->applyTransformation(m_cameraToWorldTransform);
+			if (dynamic_cast<Light*>(obj) != nullptr) {
+				obj->applyTransformation(m_cameraToWorldTransform);
 
+			}
+		}
 		return true;
 	}
 	
@@ -231,13 +243,13 @@ Colour Camera::getColourAtPixel(unsigned i, unsigned j, std::vector<Object*> m_o
 		Vector3D rayDir = getRayDirectionThroughPixel(i, j);
 		Vector3D hitNormal;
 		Point3D origin;
-		
+
 		//bool intersection = object->getIntersection(objInfo.object->intersectionPoint, rayDir);
-		
+
 		//hitColor = object.albedo / M_PI * light->intensity * light->color * std::max(0, hitNormal.dot(L));
 
 		colour = object->m_colour;
-		
+
 		/*
 		const Sphere* sphere = dynamic_cast<const Sphere*>(object);
 		const Plane* plane = dynamic_cast<const Plane*>(object);
@@ -246,10 +258,11 @@ Colour Camera::getColourAtPixel(unsigned i, unsigned j, std::vector<Object*> m_o
 
 		for (i = 0; i < m_objects.size(); i++) {
 			Light* light = dynamic_cast<Light*>(m_objects[i]);
-			if (light != nullptr) { lights.push_back(light); }
+			if (light != nullptr) { lights.push_back(light);}
 		}
-		
+
 		if (lights.size() >= 1) { colour = Phong(object, colour, origin, rayDir, lights); }
+
 	}
 	return colour;
 	
@@ -370,7 +383,9 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 		//kd: diffuse reflection constant
 		//L: Eye to Light Vector
 		//N: Surface Normal Vector
-		diffuse = diffuse + lightColourVector * lights[l]->ambientIntensity * abs(normal.dot(intersectionToLight));
+		float globalDiffuseReflection = 0.3f;
+		//diffuse = diffuse + lightColourVector * lights[l]->ambientIntensity * abs(normal.dot(intersectionToLight)) * globalDiffuseReflection;
+		diffuse = lightColourVector * lights[l]->ambientIntensity * abs(normal.dot(intersectionToLight)) * globalDiffuseReflection;
 
 
 
@@ -383,10 +398,11 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 		//V: origin to camera vector
 		//N: the shininess exponent, controlling the size of the specular highlights
 		//LightColour: colour of the light
-		float globalSpecularReflection = 0.18f; 
+		float globalSpecularReflection = 0.25f; 
 		int shinyExp = 3;
 		//float specScale = 0.5f;
-		specular = (specular + lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
+		//specular = (specular + lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
+		specular = (lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
 
 
 		//Ambient Light is calculated as:
@@ -395,7 +411,8 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 		//ka: Ambient Reflection constant
 		//ia: Amient intensity.
 		float ka = 0.5f;
-		ambient = ambient + lightColourVector * lights[l]->ambientIntensity * ka;
+		//ambient = ambient + lightColourVector * lights[l]->ambientIntensity * ka;
+		ambient = lightColourVector * lights[l]->ambientIntensity * ka;
 
 
 	}
