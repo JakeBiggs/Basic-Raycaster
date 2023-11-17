@@ -102,10 +102,11 @@ bool Camera::updatePixelBuffer(const std::vector<Object*>& objects)
 		// Now put the objects back!
 		for (auto obj : objects) {
 			obj->applyTransformation(m_cameraToWorldTransform);
+			/*
 			if (dynamic_cast<Light*>(obj) != nullptr) {
 				obj->applyTransformation(m_cameraToWorldTransform);
 
-			}
+			}*/
 		}
 		return true;
 	}
@@ -417,7 +418,19 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 
 	}
 	
-	Vector3D phong = diffuse + specular + ambient;
+	Vector3D phong;
+	if (diffuse.dot(diffuse) >= 0) {
+		if (specular.dot(specular) >= 0 && ambient.dot(ambient) < 0) {
+			phong = diffuse + specular; //+ ambient;
+		}
+		else if (ambient.dot(ambient) >= 0) {
+			phong = diffuse + specular + ambient;
+		}
+		else {
+			phong = 1;
+		}
+	}
+	
 	
 	// combines the shading effects with the original color, ensuring that the resulting color values are in the normalized range 0-1.
 	//The division by 255 is used to bring the intensity values back to a valid color range if they have been scaled during the shading calculations.
