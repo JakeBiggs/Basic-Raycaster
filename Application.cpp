@@ -142,23 +142,22 @@ void Application::setupScene()
 	*/
 	
 	
-	m_objects.push_back(new Plane(Point3D(),
-		Vector3D(0.5f, 0.5f, 1.0f),
-		Vector3D(-0.5f, 1.0f, -0.25f),
-		10.0f, 7.5f));
+	//m_objects.push_back(new Plane(Point3D(), Vector3D(0.5f, 0.5f, 1.0f), Vector3D(-0.5f, 1.0f, -0.25f), 10.0f, 7.5f));
+	//m_objects.push_back(new Plane(Point3D(), Vector3D(0.0f, 1.0f, 0.0f), Vector3D(1.0f, 0, 0), 10.0f, 7.5f));
+	m_objects.push_back(new Plane(Point3D(0.0f, -5.0f, -3.0f), Vector3D(0.0f, 1.0f, 0.0f), Vector3D(1.0f, 0, 0), 10.0f, 7.5f));
 	m_objects[0]->m_colour = Colour(50, 255, 50);
-	m_objects.push_back(new Sphere(Point3D(0.0f, 0.0f, 3.0f)));
+	m_objects.push_back(new Sphere(Point3D(0.0f, 0.0f, -2.0f)));
 	m_objects[1]->m_colour = Colour(255,50,50);
 	m_objects[1]->m_isDynamic = true;
 
-	m_objects.push_back(new Sphere(Point3D(1.0f, 1.0f, 1.0f), 0.75f));
+	m_objects.push_back(new Sphere(Point3D(1.0f, 1.0f, -1.0f), 0.75f));
 	m_objects[2]->m_colour = Colour(133, 255, 125);
 	m_objects[2]->m_isDynamic = true;
-
+	/*
 	m_objects.push_back(new Light(Point3D(5.0f, 100.0f, 5.0f), 0.5f)); //0.5f));
 	m_objects[3]->m_colour = Colour(255, 255, 255);
 	m_objects[3]->m_isDynamic = true;
-
+	*/
 }
 
 // Apply an update to the (dynamic) objects on each frame

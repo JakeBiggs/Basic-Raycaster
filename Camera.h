@@ -3,6 +3,20 @@
 #include "PixelBuffer.h"
 #include "Object.h"
 
+struct DistantLight {
+	float intensity = 0.18f;
+	//252, 165, 15)
+	Colour colour = Colour(255,255,255);
+	Matrix3D lightToWorld = Matrix3D();
+	Vector3D direction = lightToWorld * Vector3D(0, 1, 0);
+
+	void updateDirection() {
+		direction = lightToWorld * direction;
+		//direction.normalise();
+	}
+};
+
+
 class Camera
 {
 public:
@@ -31,13 +45,15 @@ public:
 	Vector3D getReflectionVector(Vector3D& U, Vector3D& N);
 
 	//Handles Diffuse, Specular and Ambient Light calculations
-	Colour Phong(const Object *object, Colour colour, Point3D raySrc, Vector3D rayDir, std::vector<Light*> lights);
+	Colour Phong(const Object *object, Colour colour, Point3D raySrc, Vector3D rayDir, DistantLight* light);
 
-	//Colour  calculateDiffuseColour(const Point3D& intersectionPoint, const Vector3D& surfaceNormal, const Light& light) const;
+	//Sets up light
+	DistantLight m_distantLight = DistantLight();
+
 private:
 	Vector3D	getRayDirectionThroughPixel(int i, int j);
 	void		updateWorldTransform();
-
+	void 		updateLightTransform();
 	Point3D worldToCameraSpace(Point3D p);
 	
 	Point3D		m_position = Point3D();			// The position (translation) of the camera in world space

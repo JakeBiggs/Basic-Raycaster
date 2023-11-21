@@ -99,6 +99,7 @@ bool Camera::updatePixelBuffer(const std::vector<Object*>& objects)
 		// Now put the objects back!
 		for (auto obj : objects) {
 			obj->applyTransformation(m_cameraToWorldTransform);
+
 		}
 		return true;
 	}
@@ -225,27 +226,10 @@ void Camera::updateLightTransform()
 	zRotation(1, 0) = sinf(m_rotation.z);
 	zRotation(1, 1) = cosf(m_rotation.z);
 	zRotation(2, 2) = 1;
-	
-	Matrix3D xyzRotation = xRotation * yRotation * zRotation;
 
-	
-
-	//Translation matrix
-	Matrix3D xyzTranslation = Matrix3D(); //Initialises translation matrix and fills with identity matrix (1 in diagonals top left to bottom right)
-
-	//In 4x4 Matrices, right most columns store	translations along the X,Y and Z axes respectively:
-	xyzTranslation(0, 3) = m_position.x;
-	xyzTranslation(1, 3) = m_position.y;
-	xyzTranslation(2, 3) = m_position.z;
-
-	//Element (2,2) Represents scaling factor along Z-axis. (Inverts Q/E controls)
-	xyzTranslation(2, 2) = -1;
-	
 	// Multiply the matrices together to get the final transformation matrix
 	
-	m_distantLight.lightToWorld = xyzRotation;
-
-
+	m_distantLight.lightToWorld = xRotation * yRotation * zRotation;
 }
 
 //Converts point in world space into camera space coordinates
@@ -285,14 +269,27 @@ Colour Camera::getColourAtPixel(unsigned i, unsigned j, std::vector<Object*> m_o
 		//Point3D hitPoint = objInfo.intersectionPoint;
 		Vector3D rayDir = getRayDirectionThroughPixel(i, j);
 		Vector3D hitNormal;
-		Point3D origin = m_position;
+		Point3D origin;
 
 		//bool intersection = object->getIntersection(objInfo.object->intersectionPoint, rayDir);
 
 		//hitColor = object.albedo / M_PI * light->intensity * light->color * std::max(0, hitNormal.dot(L));
 
 		colour = object->m_colour;
-		colour = Phong(object, colour, origin, rayDir, &m_distantLight);
+
+		/*
+		const Sphere* sphere = dynamic_cast<const Sphere*>(object);
+		const Plane* plane = dynamic_cast<const Plane*>(object);
+		*/
+		std::vector<Light*> lights;
+
+		for (i = 0; i < m_objects.size(); i++) {
+			Light* light = dynamic_cast<Light*>(m_objects[i]);
+			if (light != nullptr) { lights.push_back(light);}
+		}
+
+		if (lights.size() >= 1) { colour = Phong(object, colour, origin, rayDir, lights); }
+
 	}
 	return colour;
 	
@@ -327,7 +324,7 @@ Vector3D Camera::getReflectionVector(Vector3D& U, Vector3D& N) {
 
 }
 
-Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector3D rayDir, DistantLight* light) {
+Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector3D rayDir, std::vector<Light*> lights) {
 	
 	//Casts the shape classes onto the object to see what type of object is actually is, will return nullptr if not that object
 	const Sphere* sphere = dynamic_cast<const Sphere*>(object);
@@ -351,99 +348,103 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 	//object->getIntersection(raySrc, rayDir, distToIntersection);
 
 
-	Point3D intersectionPoint;
-	Vector3D lightDirection;
-	Vector3D intersectionToLight;
-	Vector3D lightIntensity, reflectionVector, lightColourVector;
-	Vector3D normal;
+	//Calculates ambient specular and diffuse for each light "l" in lights object list  
+	for (int l = 0; l < lights.size(); l++) {
+		
+		Point3D intersectionPoint;
+		Vector3D lightDirection;
+		Vector3D intersectionToLight;
+		Vector3D lightIntensity, reflectionVector, lightColourVector;
+		Vector3D normal;
 
-	//Calculates point of intersection using:
-	//Intersection = Origin + |Distance| dot(RayDirection) 
-	//or I = O + |D|R
-	float distMag = abs(distToIntersection);
-	intersectionPoint = raySrc + distMag * rayDir;
+		//Calculates point of intersection using:
+		//Intersection = Origin + |Distance| dot(RayDirection) 
+		//or I = O + |D|R
+		float distMag = abs(distToIntersection);
+		intersectionPoint = raySrc + distMag * rayDir;
 
 
-	//Calculating Normal Vectors:
-	if (sphere != nullptr) { //If sphere doesn't return a null pointer when cast onto object (i.e it IS a sphere)
-		normal = sphere->calculateNormal(intersectionPoint);
-		normal.normalise();
+		//Calculating Normal Vectors:
+		if (sphere != nullptr) { //If sphere doesn't return a null pointer when cast onto object (i.e it IS a sphere)
+			normal = sphere->calculateNormal(intersectionPoint);
+			normal.normalise();
+		}
+		if (plane != nullptr) { //If plane doesn't return a null pointer when cast onto object (i.e it IS a plane)
+			normal = plane->calculateNormal();
+			normal.normalise();
+		}
+
+		//Calculates Light Direction Vector using:
+		//LightDirection = IntersectionPoint - LightPosition
+		//or L = I - P.
+		// I: Point where ray intersects with object in scene
+		// P: current Light's position value.
+		// L: Resulting vector representing direction of Light ray
+		lightDirection = (intersectionPoint - lights[l]->position());
+		lightDirection.normalise(); //normalised so that we can apply it to our final light vector
+
+		//Finds vector pointing from the point of intersection to the light source using:
+		//LightVector = LightPosition-IntersectionPoint
+		//or L = P - I
+		//Resulting vector representing the intersection to light vector
+		intersectionToLight = lights[l]->position() - intersectionPoint;
+		intersectionToLight.normalise();
+
+		//Calculating Reflection Rays of current light:
+		reflectionVector = getReflectionVector(lightDirection, normal);
+		reflectionVector.normalise();
+
+		//Calculating raySrc (origin) to camera vector
+		//C = O - I
+		//Using vector rules Camera = Origin - Intersection
+		Vector3D srcToCam = raySrc - intersectionPoint;
+
+		//Gets current light colour and converts to vector format (rgb = xyz)
+		lightColourVector = ColourToVector(lights[l]->m_colour);
+
+
+		//Diffuse Light is calculated using:
+		//Diffuse = id * kd * (L DOT N)
+		//Where:
+		//id: diffuse intensity 
+		//kd: diffuse reflection constant
+		//L: Eye to Light Vector
+		//N: Surface Normal Vector
+		float globalDiffuseReflection = 0.3f;
+		//diffuse = diffuse + lightColourVector * lights[l]->ambientIntensity * abs(normal.dot(intersectionToLight)) * globalDiffuseReflection;
+		diffuse = lightColourVector * lights[l]->ambientIntensity * abs(normal.dot(intersectionToLight)) * globalDiffuseReflection;
+
+
+
+		//Specular Light is calculated using:
+		// Specular = is * ks * (R DOT V)^n  * LightColour
+		//Where:
+		//is: specular intensity (in our simplified model we will use our ambient intensity value for all lights)
+		//ks: specular reflection constant (we can ignore this term if we want uniform materials/reflections)
+		//R: Reflected Vector 
+		//V: origin to camera vector
+		//N: the shininess exponent, controlling the size of the specular highlights
+		//LightColour: colour of the light
+		float globalSpecularReflection = 0.25f; 
+		int shinyExp = 3;
+		//float specScale = 0.5f;
+		//specular = (specular + lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
+		specular = (lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
+
+
+		//Ambient Light is calculated as:
+		//Ambient = lightColour * ka * ia
+		//Where:
+		//ka: Ambient Reflection constant
+		//ia: Amient intensity.
+		float ka = 0.5f;
+		//ambient = ambient + lightColourVector * lights[l]->ambientIntensity * ka;
+		ambient = lightColourVector * lights[l]->ambientIntensity * ka;
+
+
 	}
-	if (plane != nullptr) { //If plane doesn't return a null pointer when cast onto object (i.e it IS a plane)
-		normal = plane->calculateNormal();
-		normal.normalise();
-	}
-
-	//Calculates Light Direction Vector using:
-	//LightDirection = IntersectionPoint - LightPosition
-	//or L = I - P.
-	// I: Point where ray intersects with object in scene
-	// P: current Light's position value.
-	// L: Resulting vector representing direction of Light ray
-	lightDirection = light->direction;
-	lightDirection.normalise(); //normalised so that we can apply it to our final light vector
-
-	//Finds vector pointing from the point of intersection to the light source using:
-	//LightVector = LightPosition-IntersectionPoint
-	//or L = P - I
-	//Resulting vector representing the intersection to light vector
-	//intersectionToLight = lights[l]->position() - intersectionPoint;
-	//intersectionToLight.normalise();
-
-	//Calculating Reflection Rays of current light:
-	reflectionVector = getReflectionVector(lightDirection, normal);
-	reflectionVector.normalise();
-
-	//Calculating raySrc (origin) to camera vector
-	//C = O - I
-	//Using vector rules Camera = Origin - Intersection
-	Vector3D srcToCam = raySrc - intersectionPoint;
-
-	//Gets current light colour and converts to vector format (rgb = xyz)
-	lightColourVector = ColourToVector(light->colour);
-
-
-	//Diffuse Light is calculated using:
-	//Diffuse = id * kd * (L DOT N)
-	//Where:
-	//id: diffuse intensity 
-	//kd: diffuse reflection constant
-	//L: Eye to Light Vector
-	//N: Surface Normal Vector
-	float globalDiffuseReflection = 0.3f;
-	//diffuse = diffuse + lightColourVector * lights[l]->ambientIntensity * abs(normal.dot(intersectionToLight)) * globalDiffuseReflection;
-	diffuse = lightColourVector * light->intensity * abs(normal.dot(intersectionToLight));// *globalDiffuseReflection;
-
-
-	//Specular Light is calculated using:
-	// Specular = is * ks * (R DOT V)^n  * LightColour
-	//Where:
-	//is: specular intensity (in our simplified model we will use our ambient intensity value for all lights)
-	//ks: specular reflection constant (we can ignore this term if we want uniform materials/reflections)
-	//R: Reflected Vector 
-	//V: origin to camera vector
-	//N: the shininess exponent, controlling the size of the specular highlights
-	//LightColour: colour of the light
-	float globalSpecularReflection = 0.8f; 
-	int shinyExp = 2;
-	//float specScale = 0.5f;
-	//specular = (specular + lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
-	//specular = (lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
-	specular = light->intensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector;// *specScale;
-
-	//Ambient Light is calculated as:
-	//Ambient = lightColour * ka * ia
-	//Where:
-	//ka: Ambient Reflection constant
-	//ia: Amient intensity.
-	float ka = 0.5f;
-	//ambient = ambient + lightColourVector * lights[l]->ambientIntensity * ka;
-	ambient = lightColourVector * light->intensity * ka;
-
-
 	
-	
-	Vector3D phong = diffuse + specular  + ambient;
+	Vector3D phong = diffuse + specular + ambient;
 	
 	// combines the shading effects with the original color, ensuring that the resulting color values are in the normalized range 0-1.
 	//The division by 255 is used to bring the intensity values back to a valid color range if they have been scaled during the shading calculations.
