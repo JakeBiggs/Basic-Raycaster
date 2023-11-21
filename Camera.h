@@ -4,11 +4,11 @@
 #include "Object.h"
 
 struct DistantLight {
-	float intensity = 0.18f;
+	float intensity = 0.8f;
 	//252, 165, 15)
 	Colour colour = Colour(255,255,255);
 	Matrix3D lightToWorld = Matrix3D();
-	Vector3D direction = lightToWorld * Vector3D(0, 1, 0);
+	Vector3D direction = lightToWorld * Vector3D(0, -1, 0);
 
 	void updateDirection() {
 		direction = lightToWorld * direction;

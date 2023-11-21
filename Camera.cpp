@@ -243,7 +243,7 @@ void Camera::updateLightTransform()
 	
 	// Multiply the matrices together to get the final transformation matrix
 	
-	m_distantLight.lightToWorld = xyzRotation;
+	m_distantLight.lightToWorld = xyzRotation * xyzTranslation;
 
 
 }
@@ -380,7 +380,7 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 	// I: Point where ray intersects with object in scene
 	// P: current Light's position value.
 	// L: Resulting vector representing direction of Light ray
-	lightDirection = light->direction;
+	lightDirection = (light->direction)*-1;
 	lightDirection.normalise(); //normalised so that we can apply it to our final light vector
 
 	//Finds vector pointing from the point of intersection to the light source using:
@@ -398,6 +398,7 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 	//C = O - I
 	//Using vector rules Camera = Origin - Intersection
 	Vector3D srcToCam = raySrc - intersectionPoint;
+	srcToCam.normalise();
 
 	//Gets current light colour and converts to vector format (rgb = xyz)
 	lightColourVector = ColourToVector(light->colour);
@@ -411,8 +412,9 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 	//L: Eye to Light Vector
 	//N: Surface Normal Vector
 	float globalDiffuseReflection = 0.3f;
+	float diffuseCoeffecient = max(0.0f, normal.dot(lightDirection));
 	//diffuse = diffuse + lightColourVector * lights[l]->ambientIntensity * abs(normal.dot(intersectionToLight)) * globalDiffuseReflection;
-	diffuse = lightColourVector * light->intensity * abs(normal.dot(intersectionToLight));// *globalDiffuseReflection;
+	diffuse = lightColourVector * light->intensity * diffuseCoeffecient;// *globalDiffuseReflection;
 
 
 	//Specular Light is calculated using:
@@ -425,25 +427,27 @@ Colour Camera::Phong(const Object* object, Colour colour, Point3D raySrc, Vector
 	//N: the shininess exponent, controlling the size of the specular highlights
 	//LightColour: colour of the light
 	float globalSpecularReflection = 0.8f; 
-	int shinyExp = 2;
-	//float specScale = 0.5f;
+	int shinyExp = 10;
+	float specularInensity = light->intensity * 10;
 	//specular = (specular + lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
 	//specular = (lights[l]->ambientIntensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector);// *specScale;
-	specular = light->intensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector;// *specScale;
+	float specularCoefficient = pow(max(0.0f,reflectionVector.dot(srcToCam)), shinyExp);
+	specular = lightColourVector * specularInensity * specularCoefficient;
+	//specular = light->intensity * globalSpecularReflection * pow((reflectionVector.dot(srcToCam)), shinyExp) * lightColourVector;// *specScale;
 
 	//Ambient Light is calculated as:
 	//Ambient = lightColour * ka * ia
 	//Where:
 	//ka: Ambient Reflection constant
 	//ia: Amient intensity.
-	float ka = 0.5f;
+	float ka = 0.18f;
 	//ambient = ambient + lightColourVector * lights[l]->ambientIntensity * ka;
 	ambient = lightColourVector * light->intensity * ka;
 
 
 	
 	
-	Vector3D phong = diffuse + specular  + ambient;
+	Vector3D phong = diffuse+specular + ambient;
 	
 	// combines the shading effects with the original color, ensuring that the resulting color values are in the normalized range 0-1.
 	//The division by 255 is used to bring the intensity values back to a valid color range if they have been scaled during the shading calculations.
